@@ -7,13 +7,15 @@ use std::{
     time::Duration,
 };
 
-use crate::utils::{base::*, thread_pool::*};
+use web;
+
+use crate::utils::base::*;
 
 fn main() {
-    let listener = TcpListener::bind(format!("127.0.0.1:{PORT}")).unwrap();
-    println!("-----> HTTP server running on 127.0.0.1:{PORT}");
+    let listener = TcpListener::bind(format!("0.0.0.0:{PORT}")).unwrap();
+    println!("-----> HTTP server running on 0.0.0.0:{PORT}");
 
-    let request_pool = ThreadPool::new(5);
+    let request_pool = web::utils::thread_pool::ThreadPool::new(5);
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();

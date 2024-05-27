@@ -1,0 +1,14 @@
+version: "3.8"
+
+name: rust_web_app_from_scratch
+
+services:
+  rust_web_app_from_scratch:
+    container_name: rust_web_app_from_scratch
+    build:
+      context: .
+      dockerfile: dev.dockerfile
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - "8080:8080"
