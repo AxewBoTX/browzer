@@ -1,10 +1,13 @@
+// standard library imports
 use std::{
     sync::{mpsc, Arc, Mutex},
     thread,
 };
 
+// external crate imports
 use uuid::Uuid;
 
+// internal crate imports
 use crate::utils::base::*;
 
 // Worker struct
@@ -14,6 +17,8 @@ pub struct Worker {
     thread: Option<thread::JoinHandle<()>>,
 }
 impl Worker {
+    // create a thread which runs a loop, listen for incoming jobs throught the `Reciever`, ensure
+    // the integrity of the job recieved, run the job in the thread, and return the `Worker` object
     pub fn new(id: Uuid, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
         let thread = thread::spawn(move || loop {
             let message = receiver.lock().unwrap().recv();
@@ -41,6 +46,8 @@ pub struct ThreadPool {
     sender: Option<mpsc::Sender<Job>>,
 }
 impl ThreadPool {
+    // create a channel for sending and recieving jobs, create a vector for storing workers, and
+    // new workers accoding the `size` input provided, and return the `ThreadPool` object
     pub fn new(size: usize) -> ThreadPool {
         assert!(size > 0);
 
@@ -57,6 +64,8 @@ impl ThreadPool {
             workers,
         }
     }
+
+    // send job throught the job channel using the `Sender`
     pub fn execute<F>(&self, f: F)
     where
         F: FnOnce() + Send + 'static,
@@ -64,6 +73,8 @@ impl ThreadPool {
         let _ = self.sender.as_ref().unwrap().send(Box::new(f));
     }
 }
+
+// drop implementation for `ThreadPool`
 impl Drop for ThreadPool {
     fn drop(&mut self) {
         drop(self.sender.take());
