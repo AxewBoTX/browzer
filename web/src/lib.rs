@@ -1,3 +1,4 @@
+pub mod error;
 pub mod utils;
 
 // standard library imports
@@ -8,7 +9,10 @@ use std::{
     time::Duration,
 };
 
-// WebServer struct
+// internal crate imports
+use crate::error::*;
+
+// ----- WebServer struct
 #[derive(Debug)]
 pub struct WebServer {
     pub listener: TcpListener,
@@ -44,38 +48,60 @@ impl WebServer {
     // listen for incoming
     pub fn listen(&self) {
         // print the server banner( a simple log message ) accoding to the `address` field boolean variable
-        if self.hide_banner == false {
+        if !self.hide_banner {
             println!("-----> HTTP server running on {}", self.address);
         }
 
         // loop over incoming requests and send those request as jobs to the `request_pool` in
         // order to be distributed to the worker threads
         for stream in self.listener.incoming() {
-            let stream = stream.unwrap();
-            self.request_pool.execute(|| {
-                handle_request(stream);
-            });
+            match stream {
+                Ok(stream) => {
+                    match self.request_pool.execute(|| {
+                        match handle_request(stream) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                eprint!("Failed to handle incoming request, Error: {e}");
+                            }
+                        };
+                    }) {
+                        Ok(_) => {}
+                        Err(e) => eprint!(
+                            "Failed to assign Worker thread to incoming request, Error: {}",
+                            e.to_string()
+                        ),
+                    };
+                }
+                Err(e) => {
+                    eprint!("Failed to establish a connection, Error: {}", e.to_string());
+                }
+            }
         }
     }
 }
 
 // handle various operations related to incoming requests
-fn handle_request(mut stream: TcpStream) {
+fn handle_request(mut stream: TcpStream) -> Result<(), WebServerError> {
     let buf_reader = BufReader::new(&mut stream);
 
-    let http_request: Vec<_> = buf_reader
+    // convert the text request into a vector
+    let http_request: Vec<_> = match buf_reader
         .lines()
-        .map(|result| result.unwrap())
-        .take_while(|line| !line.is_empty())
-        .collect();
+        .take_while(|result| match result {
+            Ok(line) => !line.is_empty(),
+            Err(_) => false,
+        })
+        .collect()
+    {
+        Ok(request) => request,
+        Err(e) => return Err(WebServerError::IO(e)),
+    };
     println!("HTTP Request: {:#?}", http_request);
-    let request_line = http_request
-        .join("\r\n")
-        .lines()
-        .next()
-        .unwrap()
-        .trim()
-        .to_string();
+
+    let request_line = match http_request.join("\r\n").lines().next() {
+        Some(line) => line.trim().to_string(),
+        None => return Err(WebServerError::EmptyRequestError),
+    };
 
     let (status_line, content) = match &request_line[..] {
         "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "<h1>Hello, World!<h1>"),
@@ -87,6 +113,10 @@ fn handle_request(mut stream: TcpStream) {
     };
     let content_length = content.len();
     let response = format!("{status_line}\r\nContent-Length: {content_length}\r\n\r\n{content}");
-    stream.write_all(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
+    stream
+        .write_all(response.as_bytes())
+        .map_err(|e| WebServerError::IO(e))?;
+    stream
+        .flush()
+        .map_err(|e| WebServerError::StreamFlushError(e.to_string()))
 }

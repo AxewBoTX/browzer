@@ -7,7 +7,8 @@ WORKDIR /usr/src/app
 COPY . .
 
 # install needed dependencies
-RUN cargo check && \
+RUN cargo install cargo-watch && \
+	cargo check && \
 	cargo build
 
 # run the tail command to keep the container running
