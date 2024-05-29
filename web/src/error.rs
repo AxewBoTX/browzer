@@ -1,18 +1,8 @@
-use std::sync::{self, mpsc};
+// external crate imports
 use thiserror::Error;
 
-// ----- defining custom error enum for `WebServer`
-#[derive(Debug, Error)]
-pub enum WebServerError {
-    #[error("Stream flush error: {0}")]
-    StreamFlushError(String),
-
-    #[error("I/O error: {0}")]
-    IO(#[from] std::io::Error),
-
-    #[error("Empty HTTP request")]
-    EmptyRequestError,
-}
+// standard library imports
+use std::sync::{self, mpsc};
 
 // ----- defining custom error enum for `ThreadPool`
 #[derive(Debug, Error)]
@@ -31,4 +21,27 @@ impl<T> From<sync::PoisonError<T>> for ThreadPoolError {
     fn from(err: sync::PoisonError<T>) -> Self {
         ThreadPoolError::ReceiverLockError(err.to_string())
     }
+}
+
+// ----- defining custom error enum for `Request`
+#[derive(Debug, Error)]
+pub enum RequestError {
+    #[error("Invalid request line: {0}")]
+    InvalidRequestLineError(String),
+
+    #[error("Empty HTTP request")]
+    EmptyRequestError,
+}
+
+// ----- defining custom error enum for `WebServer`
+#[derive(Debug, Error)]
+pub enum WebServerError {
+    #[error("Stream flush error: {0}")]
+    StreamFlushError(String),
+
+    #[error("I/O error: {0}")]
+    IO(#[from] std::io::Error),
+
+    #[error("Request parse error: {0}")]
+    RequestParseError(RequestError),
 }

@@ -1,14 +1,14 @@
-// standard library imports
-use std::{
-    sync::{mpsc, Arc, Mutex},
-    thread::{self},
-};
-
 // external crate imports
 use uuid::Uuid;
 
 // internal crate imports
 use crate::{error::*, utils::base::*};
+
+// standard library imports
+use std::{
+    sync::{mpsc, Arc, Mutex},
+    thread::{self},
+};
 
 // ----- Worker struct
 #[derive(Debug)]
@@ -35,10 +35,12 @@ impl Worker {
                 }
             }
         });
-        Worker {
+
+        // return the Worker struct
+        return Worker {
             id,
             thread: Some(thread),
-        }
+        };
     }
 }
 
@@ -62,10 +64,11 @@ impl ThreadPool {
             workers.push(Worker::new(Uuid::new_v4(), Arc::clone(&receiver)));
         }
 
-        ThreadPool {
+        // return the ThreadPool struct
+        return ThreadPool {
             sender: Some(sender),
             workers,
-        }
+        };
     }
 
     // send job throught the job channel using the `Sender`

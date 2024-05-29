@@ -1,5 +1,9 @@
 pub mod error;
+pub mod request;
 pub mod utils;
+
+// internal crate imports
+use crate::{error::*, request::*};
 
 // standard library imports
 use std::{
@@ -8,9 +12,6 @@ use std::{
     thread,
     time::Duration,
 };
-
-// internal crate imports
-use crate::error::*;
 
 // ----- WebServer struct
 #[derive(Debug)]
@@ -37,12 +38,13 @@ impl WebServer {
 
         let request_pool = utils::thread_pool::ThreadPool::new(5);
 
-        WebServer {
+        // return the WebServer struct
+        return WebServer {
             listener,
             request_pool,
             hide_banner: false,
             address,
-        }
+        };
     }
 
     // listen for incoming
@@ -84,8 +86,10 @@ impl WebServer {
 fn handle_request(mut stream: TcpStream) -> Result<(), WebServerError> {
     let buf_reader = BufReader::new(&mut stream);
 
-    // convert the text request into a vector
-    let http_request: Vec<_> = match buf_reader
+    // parse the request string into a `Request` struct by first parsing the string to a string
+    // vector containling the lines of requests as elements and then passing that vector onto the
+    // `new` function of the `Request` string as input
+    let request = match Request::new(&match buf_reader
         .lines()
         .take_while(|result| match result {
             Ok(line) => !line.is_empty(),
@@ -95,19 +99,26 @@ fn handle_request(mut stream: TcpStream) -> Result<(), WebServerError> {
     {
         Ok(request) => request,
         Err(e) => return Err(WebServerError::IO(e)),
+    }) {
+        Ok(safe) => safe,
+        Err(e) => {
+            return Err(WebServerError::RequestParseError(e));
+        }
     };
-    println!("HTTP Request: {:#?}", http_request);
+    // log the Request struct
+    println!("{:#?}", request);
 
-    let request_line = match http_request.join("\r\n").lines().next() {
-        Some(line) => line.trim().to_string(),
-        None => return Err(WebServerError::EmptyRequestError),
-    };
-
-    let (status_line, content) = match &request_line[..] {
-        "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "<h1>Hello, World!<h1>"),
-        "GET /sleep HTTP/1.1" => {
-            thread::sleep(Duration::from_secs(5));
-            ("HTTP/1.1 200 OK", "<h1>Sleeping...<h1>")
+    // dummy response generation
+    let (status_line, content) = match request.method {
+        HttpMethod::GET => {
+            if request.path == "/" {
+                ("HTTP/1.1 200 OK", "<h1>Hello, World!<h1>")
+            } else if request.path == "/sleep" {
+                thread::sleep(Duration::from_secs(5));
+                ("HTTP/1.1 200 OK", "<h1>Sleeping...<h1>")
+            } else {
+                ("HTTP/1.1 404 NOT FOUND", "<h1>Not Found!<h1>")
+            }
         }
         _ => ("HTTP/1.1 404 NOT FOUND", "<h1>Not Found!<h1>"),
     };
