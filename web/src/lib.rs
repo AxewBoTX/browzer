@@ -1,9 +1,10 @@
 pub mod error;
 pub mod request;
+pub mod response;
 pub mod utils;
 
 // internal crate imports
-use crate::{error::*, request::*};
+use crate::{error::*, request::*, response::*};
 
 // standard library imports
 use std::{
@@ -108,26 +109,33 @@ fn handle_request(mut stream: TcpStream) -> Result<(), WebServerError> {
     // log the Request struct
     println!("{:#?}", request);
 
-    // dummy response generation
-    let (status_line, content) = match request.method {
+    // dummy response generation using `Respose` struct`
+    let response = match request.method {
         HttpMethod::GET => {
             if request.path == "/" {
-                ("HTTP/1.1 200 OK", "<h1>Hello, World!<h1>")
+                Response::new(HttpStatusCode::OK, "<h1>Hello, World!</h1>".to_string())
             } else if request.path == "/sleep" {
                 thread::sleep(Duration::from_secs(5));
-                ("HTTP/1.1 200 OK", "<h1>Sleeping...<h1>")
+                Response::new(HttpStatusCode::OK, "<h1>Sleeping...</h1>".to_string())
             } else {
-                ("HTTP/1.1 404 NOT FOUND", "<h1>Not Found!<h1>")
+                Response::new(HttpStatusCode::NotFound, "<h1>Not Found!</h1>".to_string())
             }
         }
-        _ => ("HTTP/1.1 404 NOT FOUND", "<h1>Not Found!<h1>"),
+        _ => Response::new(
+            HttpStatusCode::NotImplemented,
+            "<h1>Not Implemented!</h1>".to_string(),
+        ),
     };
-    let content_length = content.len();
-    let response = format!("{status_line}\r\nContent-Length: {content_length}\r\n\r\n{content}");
-    stream
-        .write_all(response.as_bytes())
-        .map_err(|e| WebServerError::IO(e))?;
-    stream
-        .flush()
-        .map_err(|e| WebServerError::StreamFlushError(e.to_string()))
+    match stream.write_all(response.to_string().as_bytes()) {
+        Ok(_) => {}
+        Err(e) => {
+            return Err(WebServerError::IO(e));
+        }
+    };
+    match stream.flush() {
+        Ok(_) => Ok({}),
+        Err(e) => {
+            return Err(WebServerError::StreamFlushError(e.to_string()));
+        }
+    }
 }
