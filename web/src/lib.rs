@@ -1,10 +1,11 @@
 pub mod error;
 pub mod request;
 pub mod response;
+pub mod router;
 pub mod utils;
 
 // internal crate imports
-use crate::{error::*, request::*, response::*};
+use crate::{error::*, request::*, response::*, router::*};
 
 // standard library imports
 use std::{
@@ -21,6 +22,7 @@ pub struct WebServer {
     request_pool: utils::thread_pool::ThreadPool,
     pub hide_banner: bool,
     pub address: String,
+    router: WebRouter,
 }
 
 impl WebServer {
@@ -45,7 +47,54 @@ impl WebServer {
             request_pool,
             hide_banner: false,
             address,
+            router: WebRouter::new(),
         };
+    }
+
+    // functions to register routes using request methods, path, and handler functions
+    // ----- GET request
+    pub fn get<F>(&mut self, path: &str, handler: F)
+    where
+        F: Fn(Request) -> Response + 'static + Send + Sync,
+    {
+        self.router.add(
+            path.to_string(),
+            HttpMethod::GET,
+            RouteHandler::new(handler),
+        );
+    }
+    // ----- POST request
+    pub fn post<F>(&mut self, path: &str, handler: F)
+    where
+        F: Fn(Request) -> Response + 'static + Send + Sync,
+    {
+        self.router.add(
+            path.to_string(),
+            HttpMethod::POST,
+            RouteHandler::new(handler),
+        );
+    }
+    // ----- PATCH request
+    pub fn patch<F>(&mut self, path: &str, handler: F)
+    where
+        F: Fn(Request) -> Response + 'static + Send + Sync,
+    {
+        self.router.add(
+            path.to_string(),
+            HttpMethod::POST,
+            RouteHandler::new(handler),
+        );
+    }
+    // ----- DELETE request
+    pub fn delete<F>(&mut self, path: &str, handler: F)
+    where
+        F: Fn(Request) -> Response + 'static + Send + Sync,
+    {
+        self.router.add(
+            path.to_string(),
+            HttpMethod::POST,
+            RouteHandler::new(handler),
+        );
     }
 
     // listen for incoming
@@ -53,6 +102,7 @@ impl WebServer {
         // print the server banner( a simple log message ) accoding to the `address` field boolean variable
         if !self.hide_banner {
             println!("-----> HTTP server running on {}", self.address);
+            println!("Router: {:#?}", self.router);
         }
 
         // loop over incoming requests and send those request as jobs to the `request_pool` in

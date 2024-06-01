@@ -15,6 +15,18 @@ pub enum HttpMethod {
     PATCH,
     DELETE,
 }
+impl HttpMethod {
+    // converting enum value to method string
+    pub fn to_string(&self) -> String {
+        match self {
+            HttpMethod::GET => "GET",
+            HttpMethod::POST => "POST",
+            HttpMethod::PATCH => "PATCH",
+            HttpMethod::DELETE => "DELETE",
+        }
+        .to_string()
+    }
+}
 
 // ----- Request struct
 #[derive(Debug)]

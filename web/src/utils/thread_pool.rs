@@ -2,13 +2,16 @@
 use uuid::Uuid;
 
 // internal crate imports
-use crate::{error::*, utils::base::*};
+use crate::error::*;
 
 // standard library imports
 use std::{
     sync::{mpsc, Arc, Mutex},
     thread::{self},
 };
+
+// Worker job type
+type Job = Box<dyn FnOnce() + Send + 'static>;
 
 // ----- Worker struct
 #[derive(Debug)]
