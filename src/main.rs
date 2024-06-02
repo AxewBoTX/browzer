@@ -13,8 +13,14 @@ fn main() {
             "<h1>Hello, World!</h1>".to_string(),
         )
     });
+    server.get("/users/data", |_| {
+        web::response::Response::new(
+            web::response::HttpStatusCode::OK,
+            "<h1>User: John Doe</h1>".to_string(),
+        )
+    });
     server.get("/sleep", |_| {
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_secs(5));
         web::response::Response::new(
             web::response::HttpStatusCode::OK,
             "<h1>Sleeping...</h1>".to_string(),

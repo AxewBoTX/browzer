@@ -47,4 +47,29 @@ impl WebRouter {
             .or_insert_with(HashMap::new)
             .insert(method.to_string(), handler);
     }
+    // handle response generation from request by first getting all the user-registered routes
+    // which match the request's path(it will be hashmap) from `routes` hashmap, then using that
+    // hashmap to get the route which matches request's method and then finnaly using that route's
+    // handler function to generate the response for the request
+    pub fn handle_request(&self, request: Request) -> Response {
+        match self.routes.get(&request.path) {
+            Some(path_map) => match path_map.get(&request.method.to_string()) {
+                Some(route_handler) => {
+                    return (route_handler.handler_func)(request);
+                }
+                None => {
+                    return Response::new(
+                        HttpStatusCode::MethodNotAllowed,
+                        format!("{}", HttpStatusCode::MethodNotAllowed.code().0).to_string(),
+                    );
+                }
+            },
+            None => {
+                return Response::new(
+                    HttpStatusCode::NotFound,
+                    format!("{}", HttpStatusCode::NotFound.code().0).to_string(),
+                );
+            }
+        }
+    }
 }

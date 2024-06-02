@@ -19,6 +19,7 @@ pub enum HttpStatusCode {
     Unauthorized,
     Forbidden,
     NotFound,
+    MethodNotAllowed,
     InternalServerError,
     NotImplemented,
     BadGateway,
@@ -26,24 +27,25 @@ pub enum HttpStatusCode {
 }
 impl HttpStatusCode {
     // HttpStatusCode function implementation for coverting Enum value to an unsigned integer
-    fn code(&self) -> (&str, u16) {
+    pub fn code(&self) -> (&str, u16) {
         match self {
             HttpStatusCode::OK => ("OK", 200),
             HttpStatusCode::Created => ("Created", 201),
             HttpStatusCode::Accepted => ("Accepted", 202),
             HttpStatusCode::NoContent => ("NoContent", 204),
-            HttpStatusCode::MovedPermanently => ("MovedPermanently", 301),
+            HttpStatusCode::MovedPermanently => ("Moved Permanently", 301),
             HttpStatusCode::Found => ("Found", 302),
-            HttpStatusCode::SeeOther => ("SeeOther", 303),
-            HttpStatusCode::NotModified => ("NotModified", 304),
-            HttpStatusCode::BadRequest => ("BadRequest", 400),
+            HttpStatusCode::SeeOther => ("See Other", 303),
+            HttpStatusCode::NotModified => ("Not Modified", 304),
+            HttpStatusCode::BadRequest => ("Bad Request", 400),
             HttpStatusCode::Unauthorized => ("Unauthorized", 401),
             HttpStatusCode::Forbidden => ("Forbidden", 403),
-            HttpStatusCode::NotFound => ("NotFound", 404),
-            HttpStatusCode::InternalServerError => ("InternalServerError", 500),
-            HttpStatusCode::NotImplemented => ("NotImplemented", 501),
-            HttpStatusCode::BadGateway => ("BadGateway", 502),
-            HttpStatusCode::ServiceUnavailable => ("ServiceUnavailable", 503),
+            HttpStatusCode::NotFound => ("Not Found", 404),
+            HttpStatusCode::MethodNotAllowed => ("Method Not Allowed", 405),
+            HttpStatusCode::InternalServerError => ("Internal Server Error", 500),
+            HttpStatusCode::NotImplemented => ("Not Implemented", 501),
+            HttpStatusCode::BadGateway => ("Bad Gateway", 502),
+            HttpStatusCode::ServiceUnavailable => ("Service Unavailable", 503),
         }
     }
 }

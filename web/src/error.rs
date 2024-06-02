@@ -44,4 +44,7 @@ pub enum WebServerError {
 
     #[error("Request parse error: {0}")]
     RequestParseError(RequestError),
+
+    #[error("Internal server error: {0}")]
+    InternalServerError(String),
 }
