@@ -5,7 +5,7 @@ use maplit::hashmap;
 use std::collections::HashMap;
 
 // HTTP Response Status Codes
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum HttpStatusCode {
     OK,
     Created,
@@ -51,7 +51,7 @@ impl HttpStatusCode {
 }
 
 // ----- Response struct
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Response {
     pub status_code: HttpStatusCode,
     pub headers: HashMap<String, String>,

@@ -1,13 +1,13 @@
 // external crate imports
 use maplit::hashmap;
 // internal crate imports
-use crate::{request::*, response::*};
+use crate::{context::*, request::*, response::*};
 // standard library imports
 use std::{collections::HashMap, fmt::Debug};
 
 // ----- RouteHandler struct
 pub struct RouteHandler {
-    pub handler_func: Box<dyn Fn(Request) -> Response + 'static + Send + Sync>,
+    pub handler_func: Box<dyn Fn(Context) -> Response + 'static + Send + Sync>,
 }
 impl Debug for RouteHandler {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -18,7 +18,7 @@ impl RouteHandler {
     // create a new RouteHandler using a handler closure function
     pub fn new<F>(handler: F) -> RouteHandler
     where
-        F: Fn(Request) -> Response + 'static + Send + Sync,
+        F: Fn(Context) -> Response + 'static + Send + Sync,
     {
         return RouteHandler {
             handler_func: Box::new(handler),
@@ -50,12 +50,13 @@ impl WebRouter {
     // handle response generation from request by first getting all the user-registered routes
     // which match the request's path(it will be hashmap) from `routes` hashmap, then using that
     // hashmap to get the route which matches request's method and then finnaly using that route's
-    // handler function to generate the response for the request
+    // handler function to generate the response for the request by providing a new `Context` with
+    // the request as input to the handler function
     pub fn handle_request(&self, request: Request) -> Response {
         match self.routes.get(&request.path) {
             Some(path_map) => match path_map.get(&request.method.to_string()) {
                 Some(route_handler) => {
-                    return (route_handler.handler_func)(request);
+                    return (route_handler.handler_func)(Context::new(request));
                 }
                 None => {
                     return Response::new(

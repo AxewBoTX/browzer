@@ -1,3 +1,4 @@
+pub mod context;
 pub mod error;
 pub mod request;
 pub mod response;
@@ -5,7 +6,7 @@ pub mod router;
 pub mod utils;
 
 // internal crate imports
-use crate::{error::*, request::*, response::*, router::*};
+use crate::{context::*, error::*, request::*, response::*, router::*};
 
 // standard library imports
 use std::{
@@ -25,9 +26,10 @@ pub struct WebServer {
 }
 
 impl WebServer {
-    // create a `TcpListener`, bind it to the address provided, create a `ThreadPool` which handles
-    // distributing requests to worker threads, and return the `WebServer` object
-    pub fn new(address: String) -> WebServer {
+    // create a `TcpListener`, bind it to the address provided, create a `ThreadPool` with user
+    // defined number of workers which handles distribution of requests to worker threads and
+    // return the `WebServer` object
+    pub fn new(address: String, workers: usize) -> WebServer {
         let listener = match TcpListener::bind(&address) {
             Ok(listener) => listener,
             Err(listener_create_err) => {
@@ -38,7 +40,7 @@ impl WebServer {
             }
         };
 
-        let request_pool = utils::thread_pool::ThreadPool::new(5);
+        let request_pool = utils::thread_pool::ThreadPool::new(workers);
 
         // return the WebServer struct
         return WebServer {
@@ -54,7 +56,7 @@ impl WebServer {
     // ----- GET request
     pub fn get<F>(&mut self, path: &str, handler: F)
     where
-        F: Fn(Request) -> Response + 'static + Send + Sync,
+        F: Fn(Context) -> Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
             Some(router) => router.add(
@@ -71,7 +73,7 @@ impl WebServer {
     // ----- POST request
     pub fn post<F>(&mut self, path: &str, handler: F)
     where
-        F: Fn(Request) -> Response + 'static + Send + Sync,
+        F: Fn(Context) -> Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
             Some(router) => router.add(
@@ -88,7 +90,7 @@ impl WebServer {
     // ----- PATCH request
     pub fn patch<F>(&mut self, path: &str, handler: F)
     where
-        F: Fn(Request) -> Response + 'static + Send + Sync,
+        F: Fn(Context) -> Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
             Some(router) => router.add(
@@ -105,7 +107,7 @@ impl WebServer {
     // ----- DELETE request
     pub fn delete<F>(&mut self, path: &str, handler: F)
     where
-        F: Fn(Request) -> Response + 'static + Send + Sync,
+        F: Fn(Context) -> Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
             Some(router) => router.add(
@@ -134,7 +136,7 @@ impl WebServer {
             match stream {
                 Ok(stream) => {
                     match self.request_pool.execute(|| {
-                        match WebServer::handle_request(router, stream) {
+                        match Self::handle_request(router, stream) {
                             Ok(_) => {}
                             Err(e) => {
                                 eprintln!("Failed to handle incoming request, Error: {}", e);
