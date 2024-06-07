@@ -1,11 +1,16 @@
 // internal crate imports
 use crate::{request::*, response::*};
 
+// standard library imports
+use std::collections::HashMap;
+
 // ----- Context struct
 #[derive(Debug)]
 pub struct Context {
     pub request: Request,
     pub response: Response,
+    // HashMap< -- param_name --, -- param_value -- >
+    pub params: HashMap<String, String>,
 }
 
 impl Context {
@@ -14,6 +19,7 @@ impl Context {
         return Context {
             request,
             response: Response::default(),
+            params: HashMap::new(),
         };
     }
     // send a string as response to a request

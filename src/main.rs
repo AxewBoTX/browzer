@@ -3,19 +3,28 @@ mod utils;
 use web;
 
 use crate::utils::base::*;
-use std::{thread, time::Duration};
 
 fn main() {
     let mut server = web::WebServer::new(format!("0.0.0.0:{PORT}"), 5);
     server.get("/", |mut c| {
         c.send_string(web::response::HttpStatusCode::OK, "<h1>Hello, World!</h1>")
     });
-    server.get("/users/data", |mut c| {
+    server.get("/users/", |mut c| {
         c.send_string(web::response::HttpStatusCode::OK, "<h1>User: John Doe</h1>")
     });
-    server.get("/sleep", |mut c| {
-        thread::sleep(Duration::from_secs(5));
-        c.send_string(web::response::HttpStatusCode::OK, "<h1>Sleeping...</h1>")
+    server.get("/users/:UserID", |mut c| {
+        println!("{:#?}", c.params);
+        c.send_string(
+            web::response::HttpStatusCode::OK,
+            "<h1>Dynamic Route: Users</h1>",
+        )
+    });
+    server.get("/users/:UserID/posts/:PostID", |mut c| {
+        println!("{:#?}", c.params);
+        c.send_string(
+            web::response::HttpStatusCode::OK,
+            "<h1>Nested Dynamic Route: Users,Posts</h1>",
+        )
     });
     server.post("/fetch-data", |mut c| {
         c.send_string(
