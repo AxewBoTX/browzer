@@ -77,8 +77,35 @@ impl WebRouter {
                     ) {
                         Some(params) => match method_map.get(&request.method.to_string()) {
                             Some(route_handler) => {
+                                // process and validate query parameters from request path
+                                let mut query_params = HashMap::new();
+                                match request.path.split('?').nth(1) {
+                                    Some(query) => {
+                                        for part in query.split('&') {
+                                            let mut key_value = part.split('=');
+                                            let key = key_value.next().unwrap_or("");
+                                            let value = key_value.next().unwrap_or("");
+                                            if key.is_empty() {
+                                                // If the key is empty, return a bad request response
+                                                return Response::new(
+                                                    HttpStatusCode::BadRequest,
+                                                    format!(
+                                                        "{}",
+                                                        HttpStatusCode::BadRequest.code().0
+                                                    )
+                                                    .to_string(),
+                                                );
+                                            }
+                                            query_params.insert(key.to_string(), value.to_string());
+                                        }
+                                    }
+                                    None => {}
+                                }
+
                                 let mut context = Context::new(request);
                                 context.params = params;
+                                context.query_params = query_params;
+
                                 // the request path matches a registered dynamic route path pattern
                                 // with provided parameters
                                 return (route_handler.handler_func)(context);
@@ -97,22 +124,27 @@ impl WebRouter {
             }
         }
     }
+    // firstly remove the query parameters from the request_path string then,
     // match request path with registered dynamic route path by first converting both the paths into
-    // vectors by splitting them at  `/` (backslashes), then comparing length of these vectors to
-    // ensure they are both of same size, then we just `zip` these two vectors into 1 single
-    // vector, with format `(request_path_part,route_path_part)`, then we loop over this vector and
-    // check if the `route_path_part` of any item starts with ":" if it does, that mean that this
-    // registered route is a dynamic route, so we store the corresponding `request_path_part` into
-    // the params HashMap which is then returned after the for loop ends, and if the `route_path_part`
-    // does not start with ":", that means it's a normal route and both the parts should be equal,
-    // if they aren't, then we just return None,
+    // vectors by splitting them at  `/` (backslashes),
+    // then comparing length of these vectors to ensure they are both of same size,
+    // then we just `zip` these two vectors into 1 single vector, with format
+    // `(request_path_part,route_path_part)`,
+    // then we loop over this vector and check if the `route_path_part` of any item starts with ":",
+    // if it does, that mean that this registered route is a dynamic route, so we store the
+    // corresponding `request_path_part` into the params HashMap which is then returned after
+    // the for loop ends,
+    // and if the `route_path_part` does not start with ":",
+    // that means it's a normal route and both the parts should be equal,
+    // if they aren't, then we just return None
     fn match_dynamic_route(
         request_path: String,
         route_path: String,
     ) -> Option<HashMap<String, String>> {
         let mut params: HashMap<String, String> = hashmap! {};
 
-        let request_path_parts: Vec<&str> = request_path.split('/').collect();
+        let request_path_parts: Vec<&str> =
+            request_path.split('?').next().unwrap().split('/').collect();
         let route_path_parts: Vec<&str> = route_path.split('/').collect();
 
         if route_path_parts.len() != request_path_parts.len() {

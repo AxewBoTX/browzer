@@ -13,14 +13,16 @@ fn main() {
         c.send_string(web::response::HttpStatusCode::OK, "<h1>User: John Doe</h1>")
     });
     server.get("/users/:UserID", |mut c| {
-        println!("{:#?}", c.params);
+        println!("Path Params: {:#?}", c.params);
+        println!("Query Params: {:#?}", c.query_params);
         c.send_string(
             web::response::HttpStatusCode::OK,
             "<h1>Dynamic Route: Users</h1>",
         )
     });
     server.get("/users/:UserID/posts/:PostID", |mut c| {
-        println!("{:#?}", c.params);
+        println!("Path Params: {:#?}", c.params);
+        println!("Query Params: {:#?}", c.query_params);
         c.send_string(
             web::response::HttpStatusCode::OK,
             "<h1>Nested Dynamic Route: Users,Posts</h1>",

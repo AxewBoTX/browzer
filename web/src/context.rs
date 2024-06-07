@@ -11,6 +11,7 @@ pub struct Context {
     pub response: Response,
     // HashMap< -- param_name --, -- param_value -- >
     pub params: HashMap<String, String>,
+    pub query_params: HashMap<String, String>,
 }
 
 impl Context {
@@ -20,6 +21,7 @@ impl Context {
             request,
             response: Response::default(),
             params: HashMap::new(),
+            query_params: HashMap::new(),
         };
     }
     // send a string as response to a request
