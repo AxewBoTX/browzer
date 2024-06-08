@@ -31,4 +31,13 @@ impl Context {
         res.body = input.to_string();
         return res.clone();
     }
+    // redirect the user to another route by just setting the `Location` header in the respone
+    // headers string vector
+    pub fn redirect(&mut self, status_code: HttpStatusCode, route: &str) -> Response {
+        let res = &mut self.response;
+        res.headers
+            .insert("Location".to_string(), route.to_string());
+        res.status_code = status_code;
+        return res.clone();
+    }
 }
