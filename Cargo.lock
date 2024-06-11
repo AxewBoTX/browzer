@@ -3,6 +3,22 @@
 version = 3
 
 [[package]]
+name = "browzer"
+version = "0.1.0"
+dependencies = [
+ "browzer_web",
+]
+
+[[package]]
+name = "browzer_web"
+version = "0.1.0"
+dependencies = [
+ "maplit",
+ "thiserror",
+ "uuid",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -33,9 +49,9 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.84"
+version = "1.0.85"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec96c6a92621310b51366f1e28d05ef11489516e93be030060e5fc12024a49d6"
+checksum = "22244ce15aa966053a896d1accb3a6e68469b97c7f33f284b99f0d576879fc23"
 dependencies = [
  "unicode-ident",
 ]
@@ -100,19 +116,3 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
-
-[[package]]
-name = "web"
-version = "0.1.0"
-dependencies = [
- "maplit",
- "thiserror",
- "uuid",
-]
-
-[[package]]
-name = "web_app_from_scratch"
-version = "0.1.0"
-dependencies = [
- "web",
-]

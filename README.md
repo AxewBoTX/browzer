@@ -1,4 +1,4 @@
-# rust_web_app_from_scratch
+# browzer
 
 A web app in rust completely from scratch(using only the standard library and very few cargo packages)
 
@@ -6,10 +6,10 @@ A web app in rust completely from scratch(using only the standard library and ve
 
 - [x] Context based handler functions
 - [ ] Routing
-  - [ ] Dynamic Routes
-  - [ ] Route parameters
+  - [x] Dynamic Routes
+  - [x] Route parameters
   - [ ] Route grouping and middleware support
-  - [ ] Redirecting users to various routes
+  - [x] Redirecting users to various routes
 - [ ] Request Handling
   - [ ] Form data handling
 - [x] Response Handling

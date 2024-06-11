@@ -1,9 +1,9 @@
-workspace = { members = ["web"] }
+workspace = { members = ["browzer_web"] }
 
 [package]
-name = "web_app_from_scratch"
+name = "browzer"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-web = { path = "web" }
+browzer_web = { path = "browzer_web" }
