@@ -1,29 +1,27 @@
 //! This module defines the `Context` struct, which represents the context of a web request.
 
-// Internal crate imports
+// internal crate imports
 use crate::{request, response, utils};
 
-// Standard library imports
+// standard library imports
 use std::collections::HashMap;
 
 /// Represents the context of a web request.
 ///
-/// The `Context` struct contains information about the incoming request, such as request details,
-/// response to be sent back, parameters extracted from the request path, and query parameters.
+/// The `Context` struct contains information about the incoming request such as request details,
+/// response to be sent back, parameters extracted from the request path, and query parameters and
+/// much more.
 ///
 /// # Fields
 ///
-/// - `request` - The incoming request.
-/// - `response` - The response to be sent back.
-/// - `params` - Parameters extracted from the request path.
-/// - `query_params` - Query parameters.
+/// - `request` - The incoming request provided via the `Request` struct.
+/// - `response` - The response to be sent back using the `Response` struct.
+/// - `params` - A `HashMap` representing parameters extracted from the request path.
+/// - `query_params` - A `HashMap` representing query parameters extracted from the request path.
 ///
 /// # Examples
 ///
 /// ```rust
-/// use browzer_web::context::Context;
-/// use browzer_web::utils::HttpStatusCode;
-///
 /// let mut context = Context::new(Request::new());
 /// let response = context.send_string(HttpStatusCode::OK, "Hello, World!");
 /// ```
@@ -41,7 +39,7 @@ impl Context {
     ///
     /// # Arguments
     ///
-    /// - `request` - A `Request` representing the incoming request.
+    /// - `request` - A `Request` struct representing the incoming request.
     ///
     /// # Returns
     ///
@@ -50,9 +48,6 @@ impl Context {
     /// # Examples
     ///
     /// ```rust
-    /// use browzer_web::context::Context;
-    /// use browzer_web::request::Request;
-    ///
     /// let request = Request::new();
     /// let context = Context::new(request);
     /// ```
@@ -79,9 +74,6 @@ impl Context {
     /// # Examples
     ///
     /// ```rust
-    /// use browzer_web::context::Context;
-    /// use browzer_web::utils::HttpStatusCode;
-    ///
     /// let mut context = Context::new(Request::new());
     /// let response = context.send_string(HttpStatusCode::OK, "Hello, World!");
     /// ```
@@ -110,9 +102,6 @@ impl Context {
     /// # Examples
     ///
     /// ```rust
-    /// use browzer_web::context::Context;
-    /// use browzer_web::utils::HttpStatusCode;
-    ///
     /// let mut context = Context::new(Request::new());
     /// let response = context.redirect(HttpStatusCode::FOUND, "/home");
     /// ```

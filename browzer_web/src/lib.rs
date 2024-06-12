@@ -10,7 +10,7 @@
 //! fn main() {
 //!     let mut server = browzer_web::WebServer::new(format!("0.0.0.0:{}", PORT), 5);
 //!     server.get("/", |mut c| {
-//!         return c.send_string(browzer_web::response::HttpStatusCode::OK, "Hello, World!");
+//!         return c.send_string(browzer_web::utils::HttpStatusCode::OK, "Hello, World!");
 //!     });
 //!     server.listen();
 //! }
@@ -18,11 +18,12 @@
 //!
 //! ## Modules
 //!
-//! - `context`: route context which helps to easily work with router handlers
-//! - `error`: custom errors
-//! - `request`: handle HTTP requests related functionality
-//! - `router`: deals with routing and other aspects of routing like middlewares, registered routes
-//! - `utils`: utilities used by the framework
+//! - `context` - route context which helps to easily work with router handlers
+//! - `error` - custom errors
+//! - `request` - handle HTTP requests related functionality
+//! - `response` - handle HTTP response related functionality
+//! - `router` - deals with routing and other aspects of routing like middlewares, registered routes
+//! - `utils` - utilities used by the framework
 
 pub mod context;
 pub mod error;
@@ -123,6 +124,51 @@ impl WebServer {
         };
     }
 
+    /// Register a new middleware
+    ///
+    /// This function allows you to register a new middleware function in the ruoter's middleware
+    /// vector, which applies all your registered middlewares to incoming requests one-by-one in
+    /// exact order in which you defined those middleware functions
+    ///
+    /// # Arguments
+    ///
+    /// - `middleware_func` - A closure function containing the functionality of the middleware
+    /// defined by the user
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut server = WebServer::new("127.0.0.1:8080".to_string(), 4);
+    ///
+    /// server.middleware(|mut ctx| {
+    ///     // some functionality
+    ///     return ctx
+    /// });
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// If the router is not initialized, this method will print an error message using `eprintln!`.
+    ///
+    /// # Panics
+    ///
+    /// This function will not panic under normal conditions. However, if the router is not properly
+    /// initialized, it will log an error.
+    pub fn middleware<F>(&mut self, middleware_func: F)
+    where
+        F: Fn(context::Context) -> context::Context + 'static + Send + Sync,
+    {
+        match Arc::get_mut(&mut self.router) {
+            Some(router) => router.add_middleware(Box::new(middleware_func)),
+            None => eprintln!(
+                "{}",
+                error::WebServerError::InternalServerError(
+                    "WebRouter is not innitialized".to_string()
+                )
+            ),
+        };
+    }
+
     /// Registers a new route for handling HTTP GET requests.
     ///
     /// This method allows you to define a route and associate it with a handler function that
@@ -131,10 +177,9 @@ impl WebServer {
     ///
     /// # Arguments
     ///
-    /// * `path` - A string slice that holds the path for the route. This is the URL path that will be
+    /// - `path` - A string slice that holds the path for the route. This is the URL path that will be
     ///   matched against incoming GET requests.
-    /// * `handler` - A closure or function that takes a `Context` as input and returns a `Response`.
-    ///   The handler function must be `'static`, `Send`, and `Sync`.
+    /// - `handler` - A closure or function that takes a `Context` as input and returns a `Response`.
     ///
     /// # Examples
     ///
@@ -142,7 +187,7 @@ impl WebServer {
     /// let mut server = WebServer::new("127.0.0.1:8080".to_string(), 4);
     ///
     /// server.get("/hello", |mut ctx| {
-    ///     return ctx.send_string(browzer_web::response::HttpStatusCode::OK, "Hello, World!");
+    ///     return ctx.send_string(browzer_web::utils::HttpStatusCode::OK, "Hello, World!");
     /// });
     /// ```
     ///
@@ -160,11 +205,7 @@ impl WebServer {
         F: Fn(context::Context) -> response::Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
-            Some(router) => router.add(
-                path.to_string(),
-                utils::HttpMethod::GET,
-                router::RouteHandler::new(handler),
-            ),
+            Some(router) => router.add(path.to_string(), utils::HttpMethod::GET, Box::new(handler)),
             None => eprintln!(
                 "{}",
                 error::WebServerError::InternalServerError(
@@ -181,10 +222,9 @@ impl WebServer {
     ///
     /// # Arguments
     ///
-    /// * `path` - A string slice that holds the path for the route. This is the URL path that will be
+    /// - `path` - A string slice that holds the path for the route. This is the URL path that will be
     ///   matched against incoming POST requests.
-    /// * `handler` - A closure or function that takes a `Context` as input and returns a `Response`.
-    ///   The handler function must be `'static`, `Send`, and `Sync`.
+    /// - `handler` - A closure or function that takes a `Context` as input and returns a `Response`.
     ///
     /// # Examples
     ///
@@ -192,7 +232,7 @@ impl WebServer {
     /// let mut server = WebServer::new("127.0.0.1:8080".to_string(), 4);
     ///
     /// server.post("/submit", |mut ctx| {
-    ///     return ctx.send_string(browzer_web::response::HttpStatusCode::OK, "Resource submitted!");
+    ///     return ctx.send_string(browzer_web::utils::HttpStatusCode::OK, "Resource submitted!");
     /// });
     /// ```
     ///
@@ -210,11 +250,9 @@ impl WebServer {
         F: Fn(context::Context) -> response::Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
-            Some(router) => router.add(
-                path.to_string(),
-                utils::HttpMethod::POST,
-                router::RouteHandler::new(handler),
-            ),
+            Some(router) => {
+                router.add(path.to_string(), utils::HttpMethod::POST, Box::new(handler))
+            }
             None => eprintln!(
                 "{}",
                 error::WebServerError::InternalServerError(
@@ -231,10 +269,9 @@ impl WebServer {
     ///
     /// # Arguments
     ///
-    /// * `path` - A string slice that holds the path for the route. This is the URL path that will be
+    /// - `path` - A string slice that holds the path for the route. This is the URL path that will be
     ///   matched against incoming PATCH requests.
-    /// * `handler` - A closure or function that takes a `Context` as input and returns a `Response`.
-    ///   The handler function must be `'static`, `Send`, and `Sync`.
+    /// - `handler` - A closure or function that takes a `Context` as input and returns a `Response`.
     ///
     /// # Examples
     ///
@@ -242,7 +279,7 @@ impl WebServer {
     /// let mut server = WebServer::new("127.0.0.1:8080".to_string(), 4);
     ///
     /// server.patch("/update", |mut ctx| {
-    ///     return ctx.send_string(browzer_web::response::HttpStatusCode::OK, "Resource patched!");
+    ///     return ctx.send_string(browzer_web::utils::HttpStatusCode::OK, "Resource patched!");
     /// });
     /// ```
     ///
@@ -263,7 +300,7 @@ impl WebServer {
             Some(router) => router.add(
                 path.to_string(),
                 utils::HttpMethod::PATCH,
-                router::RouteHandler::new(handler),
+                Box::new(handler),
             ),
             None => eprintln!(
                 "{}",
@@ -281,10 +318,9 @@ impl WebServer {
     ///
     /// # Arguments
     ///
-    /// * `path` - A string slice that holds the path for the route. This is the URL path that will be
+    /// - `path` - A string slice that holds the path for the route. This is the URL path that will be
     ///   matched against incoming DELETE requests.
-    /// * `handler` - A closure or function that takes a `Context` as input and returns a `Response`.
-    ///   The handler function must be `'static`, `Send`, and `Sync`.
+    /// - `handler` - A closure or function that takes a `Context` as input and returns a `Response`.
     ///
     /// # Examples
     ///
@@ -292,7 +328,7 @@ impl WebServer {
     /// let mut server = WebServer::new("127.0.0.1:8080".to_string(), 4);
     ///
     /// server.delete("/remove", |mut ctx|{
-    ///     return ctx.send_string(browzer_web::response::HttpStatusCode::OK, "Resource deleted!");
+    ///     return ctx.send_string(browzer_web::utils::HttpStatusCode::OK, "Resource deleted!");
     /// });
     /// ```
     ///
@@ -313,7 +349,7 @@ impl WebServer {
             Some(router) => router.add(
                 path.to_string(),
                 utils::HttpMethod::DELETE,
-                router::RouteHandler::new(handler),
+                Box::new(handler),
             ),
             None => eprintln!(
                 "{}",
@@ -324,7 +360,7 @@ impl WebServer {
         };
     }
 
-    /// Listens for incoming TCP connections and handles them using the web server.
+    /// Listens for incoming TCP connections and execute various functionality on those connections.
     ///
     /// This function starts the web server, accepting incoming connections and distributing
     /// them to worker threads for handling. It uses the `request_pool` to manage a pool of
@@ -344,7 +380,6 @@ impl WebServer {
     /// server.listen();
     /// ```
     ///
-    /// This example demonstrates how to start the web server and listen for incoming connections.
     pub fn listen(&self) {
         // print the server banner( a simple log message ) accoding to the `address` field boolean variable
         if !self.hide_banner {

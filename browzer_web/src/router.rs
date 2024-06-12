@@ -1,69 +1,11 @@
-//! This module provides the routing functionality for the web framework. It defines the `RouteHandler` and `WebRouter` structs, allowing for the registration and handling of routes in a web application.
+//! This module provides the routing functionality for the web framework. It defines the `WebRouter` struct, allowing user to handle routing in a web application.
 
 // external crate imports
 use maplit::hashmap;
 // internal crate imports
 use crate::{context, request, response, utils};
 // standard library imports
-use std::{collections::HashMap, fmt::Debug};
-
-/// Represents a route handler function.
-///
-/// The `RouteHandler` struct wraps a closure that processes a `Context` and returns a `Response`.
-///
-/// # Fields
-///
-/// - `handler_func` - A boxed closure that takes a `Context` and returns a `Response`.
-///
-/// # Examples
-///
-/// ```rust
-/// use browzer_web::{context::Context, response::Response, router::RouteHandler, utils::HttpStatusCode};
-///
-/// let handler = RouteHandler::new(|ctx: Context| {
-///     Response::new(HttpStatusCode::OK, "Hello, World!".to_string())
-/// });
-/// ```
-// ----- RouteHandler struct
-pub struct RouteHandler {
-    pub handler_func: Box<dyn Fn(context::Context) -> response::Response + 'static + Send + Sync>,
-}
-impl Debug for RouteHandler {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RouterHandler").finish()
-    }
-}
-impl RouteHandler {
-    /// Creates a new `RouteHandler`.
-    ///
-    /// This function initializes a `RouteHandler` with a given closure.
-    ///
-    /// # Arguments
-    ///
-    /// - `handler` - A closure that takes a `Context` and returns a `Response`.
-    ///
-    /// # Returns
-    ///
-    /// - `RouteHandler` - A new instance of `RouteHandler`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use browzer_web::{context::Context, response::Response, router::RouteHandler, utils::HttpStatusCode};
-    ///
-    /// let handler = RouteHandler::new(|ctx: Context| {
-    ///     Response::new(HttpStatusCode::OK, "Hello, World!".to_string())
-    /// });
-    /// ```
-    pub fn new<F>(handler: F) -> RouteHandler
-    where
-        F: Fn(context::Context) -> response::Response + 'static + Send + Sync,
-    {
-        return RouteHandler {
-            handler_func: Box::new(handler),
-        };
-    }
-}
+use std::{collections::HashMap, fmt};
 
 /// Manages the routing logic for the web framework.
 ///
@@ -71,24 +13,28 @@ impl RouteHandler {
 ///
 /// # Fields
 ///
-/// - `routes` - A `HashMap` mapping route paths to another `HashMap` of HTTP methods and their corresponding `RouteHandler`.
-///
-/// # Examples
-///
-/// ```rust
-/// use browzer_web::{context::Context, response::Response, router::WebRouter, utils::HttpMethod, utils::HttpStatusCode};
-/// use maplit::hashmap;
-///
-/// let mut router = WebRouter::new();
-/// router.add("/".to_string(), HttpMethod::GET, RouteHandler::new(|ctx: Context| {
-///     Response::new(HttpStatusCode::OK, "Hello, World!".to_string())
-/// }));
-/// ```
+/// - `routes` - A `HashMap` mapping route paths to another `HashMap` of HTTP methods and their corresponding `RouteHandlerFunction`.
+/// - `middlewares` - A `Vector` representing a list of all the registered middlewares
 // ----- WebRouter struct
-#[derive(Debug)]
 pub struct WebRouter {
-    // HashMap< --path-- ,HashMap< --method-- ,RouteHandler>>
-    pub routes: HashMap<String, HashMap<String, RouteHandler>>,
+    // HashMap< --path-- ,HashMap< --method-- , RouteHandlerFunction>>
+    pub routes: HashMap<
+        String,
+        HashMap<
+            String,
+            Box<dyn Fn(context::Context) -> response::Response + 'static + Send + Sync>,
+        >,
+    >,
+    pub middlewares: Vec<Box<dyn Fn(context::Context) -> context::Context + 'static + Send + Sync>>,
+}
+
+impl fmt::Debug for WebRouter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WebRouter")
+            .field("routes", &"HashMap<String, HashMap<String, Box<dyn Fn(context::Context) -> response::Response + Send + Sync + 'static>>>")
+            .field("middlewares", &"Vec<Box<dyn Fn(context::Context) -> context::Context + 'static + Send + Sync>>")
+            .finish()
+    }
 }
 
 impl WebRouter {
@@ -110,6 +56,7 @@ impl WebRouter {
     pub fn new() -> WebRouter {
         return WebRouter {
             routes: hashmap! {},
+            middlewares: vec![],
         };
     }
 
@@ -119,28 +66,34 @@ impl WebRouter {
     ///
     /// - `path` - The route path as a `String`.
     /// - `method` - The HTTP method for the route as an `HttpMethod`.
-    /// - `handler` - The `RouteHandler` for the route.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use browzer_web::{context::Context, response::Response, router::{WebRouter, RouteHandler}, utils::HttpMethod, utils::HttpStatusCode};
-    ///
-    /// let mut router = WebRouter::new();
-    /// router.add("/".to_string(), HttpMethod::GET, RouteHandler::new(|ctx: Context| {
-    ///     Response::new(HttpStatusCode::OK, "Hello, World!".to_string())
-    /// }));
-    /// ```
-    pub fn add(&mut self, path: String, method: utils::HttpMethod, handler: RouteHandler) {
+    /// - `handler` - The `RouteHandlerFunction` representing closure function for the route.
+    pub fn add<F>(&mut self, path: String, method: utils::HttpMethod, handler: F)
+    where
+        F: Fn(context::Context) -> response::Response + 'static + Send + Sync,
+    {
         self.routes
             .entry(path.to_string())
             .or_insert_with(HashMap::new)
-            .insert(method.to_string(), handler);
+            .insert(method.to_string(), Box::new(handler));
     }
 
-    /// Handles an incoming request and generates a response.
+    /// Appends a new middleware to the `middlewares` vector
     ///
-    /// This function handle response generation from request by first getting all the user-registered routes
+    /// # Arguments
+    ///
+    /// - `middleware_func` - A closure function representing the middleware handler
+    pub fn add_middleware<F>(&mut self, middleware_func: F)
+    where
+        F: Fn(context::Context) -> context::Context + 'static + Send + Sync,
+    {
+        self.middlewares.push(Box::new(middleware_func));
+    }
+
+    /// Handles an incoming request, apply middlewares and generates a response.
+    ///
+    /// This function works in two parts:
+    /// 1. It applies all the middlewares from the `middlewares` vector
+    /// 2. handle response generation from request by first getting all the user-registered routes
     /// which match the request's path(it will be hashmap) from `routes` hashmap, then using that
     /// hashmap to get the route which matches request's method and then finaly using that route's
     /// handler function to generate the response for the request by providing a new `Context` with
@@ -153,33 +106,19 @@ impl WebRouter {
     /// # Returns
     ///
     /// - `Response` - The generated response.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use browzer_web::{context::Context, request::Request, response::Response, router::{WebRouter, RouteHandler}, utils::HttpMethod, utils::HttpStatusCode};
-    ///
-    /// let mut router = WebRouter::new();
-    /// router.add("/".to_string(), HttpMethod::GET, RouteHandler::new(|ctx: Context| {
-    ///     Response::new(HttpStatusCode::OK, "Hello, World!".to_string())
-    /// }));
-    ///
-    /// let request = Request::new(&vec![
-    ///     "GET / HTTP/1.1".to_string(),
-    ///     "".to_string()
-    /// ]).unwrap();
-    ///
-    /// let response = router.handle_request(request);
-    ///
-    /// assert_eq!(response.status_code, HttpStatusCode::OK);
-    /// assert_eq!(response.body, "Hello, World!");
-    /// ```
     pub fn handle_request(&self, request: request::Request) -> response::Response {
-        match self.routes.get(&request.path) {
-            Some(path_map) => match path_map.get(&request.method.to_string()) {
+        // apply middlewares
+        let mut context = context::Context::new(request);
+        for middleware in &self.middlewares {
+            context = (middleware)(context);
+        }
+
+        // request path pattern matching with registered route paths
+        match self.routes.get(&context.request.path) {
+            Some(path_map) => match path_map.get(&context.request.method.to_string()) {
                 Some(route_handler) => {
                     // the request path, method `exactly` matches a registered route path, method
-                    return (route_handler.handler_func)(context::Context::new(request));
+                    return (route_handler)(context);
                 }
                 None => {
                     // the request path `exactly` matches a registered route path but the method is
@@ -194,14 +133,14 @@ impl WebRouter {
             None => {
                 for (route_path, method_map) in &self.routes {
                     match WebRouter::match_dynamic_route(
-                        request.path.to_string(),
+                        context.request.path.to_string(),
                         route_path.to_string(),
                     ) {
-                        Some(params) => match method_map.get(&request.method.to_string()) {
+                        Some(params) => match method_map.get(&context.request.method.to_string()) {
                             Some(route_handler) => {
                                 // process and validate query parameters from request path
                                 let mut query_params = HashMap::new();
-                                match request.path.split('?').nth(1) {
+                                match context.request.path.split('?').nth(1) {
                                     Some(query) => {
                                         for part in query.split('&') {
                                             let mut key_value = part.split('=');
@@ -224,13 +163,12 @@ impl WebRouter {
                                     None => {}
                                 }
 
-                                let mut context = context::Context::new(request);
                                 context.params = params;
                                 context.query_params = query_params;
 
                                 // the request path matches a registered dynamic route path pattern
                                 // with provided parameters
-                                return (route_handler.handler_func)(context);
+                                return (route_handler)(context);
                             }
                             None => {}
                         },
@@ -272,9 +210,6 @@ impl WebRouter {
     /// # Examples
     ///
     /// ```rust
-    /// use std::collections::HashMap;
-    /// use browzer_web::router::WebRouter;
-    ///
     /// let request_path = "/users/123".to_string();
     /// let route_path = "/users/:id".to_string();
     /// let params = WebRouter::match_dynamic_route(request_path, route_path).unwrap();

@@ -19,7 +19,7 @@ use std::collections::HashMap;
 /// - `method` - The HTTP method of the request (e.g., GET, POST).
 /// - `path` - The path of the request (e.g., "/index.html").
 /// - `version` - The HTTP version used in the request (e.g., "HTTP/1.1").
-/// - `headers` - A hashmap containing the request headers as key-value pairs.
+/// - `headers` - A `HashMap` containing the request headers as key-value pairs.
 /// - `body` - An optional string containing the body of the request.
 // ----- Request struct
 #[derive(Debug)]
@@ -113,7 +113,7 @@ impl Request {
             Some(
                 input[index + 1..]
                     .iter()
-                    .map(|s| &**s)
+                    .map(|s| &**s) // NOTE: I have NO idea what is happening here
                     .collect::<Vec<_>>()
                     .join("\n"),
             )
