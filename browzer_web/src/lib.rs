@@ -205,7 +205,14 @@ impl WebServer {
         F: Fn(context::Context) -> response::Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
-            Some(router) => router.add(path.to_string(), utils::HttpMethod::GET, Box::new(handler)),
+            Some(router) => {
+                match router.add(path.to_string(), utils::HttpMethod::GET, Box::new(handler)) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("{}", e.to_string());
+                    }
+                }
+            }
             None => eprintln!(
                 "{}",
                 error::WebServerError::InternalServerError(
@@ -238,7 +245,8 @@ impl WebServer {
     ///
     /// # Errors
     ///
-    /// If the router is not initialized, this method will print an error message using `eprintln!`.
+    /// If the router is not initialized or it it fails to register the route using `WebRouter`,
+    /// this method will print an error message using `eprintln!`.
     ///
     /// # Panics
     ///
@@ -251,7 +259,12 @@ impl WebServer {
     {
         match Arc::get_mut(&mut self.router) {
             Some(router) => {
-                router.add(path.to_string(), utils::HttpMethod::POST, Box::new(handler))
+                match router.add(path.to_string(), utils::HttpMethod::POST, Box::new(handler)) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("{}", e.to_string());
+                    }
+                }
             }
             None => eprintln!(
                 "{}",
@@ -285,7 +298,8 @@ impl WebServer {
     ///
     /// # Errors
     ///
-    /// If the router is not initialized, this method will print an error message using `eprintln!`.
+    /// If the router is not initialized or it it fails to register the route using `WebRouter`,
+    /// this method will print an error message using `eprintln!`.
     ///
     /// # Panics
     ///
@@ -297,11 +311,14 @@ impl WebServer {
         F: Fn(context::Context) -> response::Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
-            Some(router) => router.add(
-                path.to_string(),
-                utils::HttpMethod::PATCH,
-                Box::new(handler),
-            ),
+            Some(router) => {
+                match router.add(path.to_string(), utils::HttpMethod::GET, Box::new(handler)) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("{}", e.to_string());
+                    }
+                }
+            }
             None => eprintln!(
                 "{}",
                 error::WebServerError::InternalServerError(
@@ -334,7 +351,8 @@ impl WebServer {
     ///
     /// # Errors
     ///
-    /// If the router is not initialized, this method will print an error message using `eprintln!`.
+    /// If the router is not initialized or it it fails to register the route using `WebRouter`,
+    /// this method will print an error message using `eprintln!`.
     ///
     /// # Panics
     ///
@@ -346,11 +364,14 @@ impl WebServer {
         F: Fn(context::Context) -> response::Response + 'static + Send + Sync,
     {
         match Arc::get_mut(&mut self.router) {
-            Some(router) => router.add(
-                path.to_string(),
-                utils::HttpMethod::DELETE,
-                Box::new(handler),
-            ),
+            Some(router) => {
+                match router.add(path.to_string(), utils::HttpMethod::GET, Box::new(handler)) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("{}", e.to_string());
+                    }
+                }
+            }
             None => eprintln!(
                 "{}",
                 error::WebServerError::InternalServerError(
@@ -444,7 +465,15 @@ impl WebServer {
         // utilize user registered routes from `routes` hashmap in the `WebRouter` to handle
         // requests, generate responses and then send those responses to the request agent throught
         // the TCP connection stream
-        match stream.write_all(router.handle_request(request).to_string().as_bytes()) {
+        match stream.write_all(
+            match router.handle_request(request) {
+                Ok(res) => res.to_string(),
+                Err(e) => {
+                    return Err(error::WebServerError::InternalServerError(e.to_string()));
+                }
+            }
+            .as_bytes(),
+        ) {
             Ok(_) => {}
             Err(e) => {
                 return Err(error::WebServerError::IO(e));

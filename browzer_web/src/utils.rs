@@ -2,6 +2,51 @@
 
 pub mod thread_pool;
 
+// internal crate imports
+use crate::error;
+
+/// Formats the route or request path string by slashes
+///
+/// If there is a route defined as `/menu/items/`, a person would probably not want to add the
+/// slash at the end everytime they are visiting this path, so this function removes the slashes at
+/// the end from such paths making it easier and simpler for both the end user and developer
+///
+/// # Arguments
+/// - `path` - A `String` representing the path to be formatted
+///
+/// # Returns
+/// - `Result<String, WebRouterError>` - A result containing a `String` representing the formatted
+/// path if it was successfully formatted or a `WebRouterError` if there is an error in formatting
+/// the path.
+///
+/// # Examples
+///
+/// ```rust
+/// assert_eq!(format_path_by_slashes("/menu/items/".to_string()), Ok("/menu/items".to_string()));
+/// assert_eq!(format_path_by_slashes("/users/get_user".to_string()), Ok("/users/get_user".to_string()));
+/// assert_eq!(format_path_by_slashes("/users/axew/?pass=\"some_pass\"".to_string()), Ok("/users/axew?pass=\"some_pass\"".to_string()));
+/// assert_eq!(format_path_by_slashes("/".to_string()), Ok("/".to_string()));
+/// ```
+pub fn format_path_by_slashes(mut path: String) -> Result<String, error::WebRouterError> {
+    if path.trim().len() == 0 && path.trim() == "" {
+        path = "/".to_string();
+    }
+    match path.chars().nth(path.len() - 1) {
+        Some(last_char) => {
+            if last_char == '/' {
+                path.pop();
+            }
+        }
+        None => {
+            return Err(error::WebRouterError::PathFormatError(
+                "Failed to format path by slashes".to_string(),
+            ));
+        }
+    }
+    path = path.replace("/?", "?");
+    return Ok(path);
+}
+
 /// Enumeration of supported HTTP methods.
 #[derive(Debug)]
 pub enum HttpMethod {

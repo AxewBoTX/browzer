@@ -3,7 +3,7 @@
 // external crate imports
 use maplit::hashmap;
 // internal crate imports
-use crate::{context, request, response, utils};
+use crate::{context, error, request, response, utils};
 // standard library imports
 use std::{collections::HashMap, fmt};
 
@@ -67,14 +67,31 @@ impl WebRouter {
     /// - `path` - The route path as a `String`.
     /// - `method` - The HTTP method for the route as an `HttpMethod`.
     /// - `handler` - The `RouteHandlerFunction` representing closure function for the route.
-    pub fn add<F>(&mut self, path: String, method: utils::HttpMethod, handler: F)
+    ///
+    /// # Returns
+    ///
+    /// - `Result<(), WebRouterError>` - A Result containing a `WebRouterError` if there is
+    /// any error while formatting the path using `format_path_by_slashes` utility function
+    pub fn add<F>(
+        &mut self,
+        mut path: String,
+        method: utils::HttpMethod,
+        handler: F,
+    ) -> Result<(), error::WebRouterError>
     where
         F: Fn(context::Context) -> response::Response + 'static + Send + Sync,
     {
+        path = match utils::format_path_by_slashes(path) {
+            Ok(formatted_path) => formatted_path,
+            Err(e) => {
+                return Err(e);
+            }
+        };
         self.routes
             .entry(path.to_string())
             .or_insert_with(HashMap::new)
             .insert(method.to_string(), Box::new(handler));
+        return Ok(());
     }
 
     /// Appends a new middleware to the `middlewares` vector
@@ -105,8 +122,21 @@ impl WebRouter {
     ///
     /// # Returns
     ///
-    /// - `Response` - The generated response.
-    pub fn handle_request(&self, request: request::Request) -> response::Response {
+    /// - `Result<Response, WebRouterError>` - A result containing the `Respnose` struct if
+    /// response is successfully generated, or a `WebRouterError` if there is an error in generating
+    /// the response.
+    pub fn handle_request(
+        &self,
+        mut request: request::Request,
+    ) -> Result<response::Response, error::WebRouterError> {
+        // format request path by slashes
+        request.path = match utils::format_path_by_slashes(request.path) {
+            Ok(formatted_path) => formatted_path,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+
         // apply middlewares
         let mut context = context::Context::new(request);
         for middleware in &self.middlewares {
@@ -118,15 +148,15 @@ impl WebRouter {
             Some(path_map) => match path_map.get(&context.request.method.to_string()) {
                 Some(route_handler) => {
                     // the request path, method `exactly` matches a registered route path, method
-                    return (route_handler)(context);
+                    return Ok((route_handler)(context));
                 }
                 None => {
                     // the request path `exactly` matches a registered route path but the method is
                     // different
-                    return response::Response::new(
+                    return Ok(response::Response::new(
                         utils::HttpStatusCode::MethodNotAllowed,
                         format!("{}", utils::HttpStatusCode::MethodNotAllowed.code().0).to_string(),
-                    );
+                    ));
                 }
             },
             // the request path does not `exactly` match a registered route path
@@ -148,14 +178,14 @@ impl WebRouter {
                                             let value = key_value.next().unwrap_or("");
                                             if key.is_empty() {
                                                 // If the key is empty, return a bad request response
-                                                return response::Response::new(
+                                                return Ok(response::Response::new(
                                                     utils::HttpStatusCode::BadRequest,
                                                     format!(
                                                         "{}",
                                                         utils::HttpStatusCode::BadRequest.code().0
                                                     )
                                                     .to_string(),
-                                                );
+                                                ));
                                             }
                                             query_params.insert(key.to_string(), value.to_string());
                                         }
@@ -168,7 +198,7 @@ impl WebRouter {
 
                                 // the request path matches a registered dynamic route path pattern
                                 // with provided parameters
-                                return (route_handler)(context);
+                                return Ok((route_handler)(context));
                             }
                             None => {}
                         },
@@ -177,10 +207,10 @@ impl WebRouter {
                 }
                 // the request path neither `exactly` matches any registered route,
                 // nor matches with any registered dynamic route path pattern
-                return response::Response::new(
+                return Ok(response::Response::new(
                     utils::HttpStatusCode::NotFound,
                     format!("{}", utils::HttpStatusCode::NotFound.code().0).to_string(),
-                );
+                ));
             }
         }
     }

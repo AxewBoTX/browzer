@@ -60,3 +60,11 @@ pub enum WebServerError {
     #[error("Internal server error: {0}")]
     InternalServerError(String),
 }
+
+/// Custom error type for the `WebRouter`
+#[derive(Debug, Error)]
+pub enum WebRouterError {
+    /// Error while formatting a path
+    #[error("Error while formatting a path: {0}")]
+    PathFormatError(String),
+}
