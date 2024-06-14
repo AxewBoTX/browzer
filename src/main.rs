@@ -9,8 +9,6 @@ fn main() {
     server.get("/", |mut c| {
         return c.send_string(browzer_web::utils::HttpStatusCode::OK, "(/) route");
     });
-    server.get("/users", |mut c| {
-        return c.send_string(browzer_web::utils::HttpStatusCode::OK, "/users route");
-    });
+    server.serve_static("static", "/static");
     server.listen();
 }

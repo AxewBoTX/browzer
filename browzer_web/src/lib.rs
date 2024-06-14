@@ -34,8 +34,10 @@ pub mod utils;
 
 // standard library imports
 use std::{
+    fs,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
+    path::Path,
     sync::Arc,
 };
 
@@ -126,7 +128,7 @@ impl WebServer {
 
     /// Register a new middleware
     ///
-    /// This function allows you to register a new middleware function in the ruoter's middleware
+    /// This method allows you to register a new middleware function in the ruoter's middleware
     /// vector, which applies all your registered middlewares to incoming requests one-by-one in
     /// exact order in which you defined those middleware functions
     ///
@@ -381,9 +383,75 @@ impl WebServer {
         };
     }
 
+    /// This method serves and maps static files from directory path to a route path
+    ///
+    /// This method does it's function by registering a dynamic GET method route to the
+    /// `route_path`, that route's handler function gets the filename of the file that is requested
+    /// from the dynamic route params and then check if a file with that name exists under the
+    /// `dir_path`, if it does then the handler will return a `String` response with that file's
+    /// content as body, it not then it returns a `NotFound`
+    ///
+    /// # Arguments
+    ///
+    /// - `dir_path` - A string representing the directory on the machine which the user wants to
+    /// by served on the web app.
+    /// - `route_path` - A string representing the path to which the user wants to map the
+    /// static file directory
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut server = WebServer::new("127.0.0.1:8080".to_string(), 4);
+    ///
+    /// server.serve_static("static","/static/get")
+    /// ```
+    pub fn serve_static(&mut self, dir_path: &str, route_path: &str) {
+        let dir_path = Arc::new(dir_path.to_string());
+        let dir_path_clone = Arc::clone(&dir_path);
+        let route = format!("{}/:filename", route_path);
+
+        self.get(&route, move |mut c| {
+            let filename = match c.params.get("filename") {
+                Some(filename) => filename,
+                None => {
+                    // Couldn't get the filename param
+                    return c.send_string(
+                        utils::HttpStatusCode::InternalServerError,
+                        utils::HttpStatusCode::InternalServerError.code().0,
+                    );
+                }
+            };
+            let path = Path::new(&*dir_path_clone).join(filename); // NOTE: I have NO idea what is happening here
+            match path.exists() {
+                true => {
+                    return c.send_string(
+                        utils::HttpStatusCode::OK,
+                        &match fs::read_to_string(path) {
+                            Ok(res) => res,
+                            Err(_) => {
+                                // Couldn't prase the path to string
+                                return c.send_string(
+                                    utils::HttpStatusCode::InternalServerError,
+                                    utils::HttpStatusCode::InternalServerError.code().0,
+                                );
+                            }
+                        },
+                    );
+                }
+                false => {
+                    // filename doesn't exist under the dir_path
+                    return c.send_string(
+                        utils::HttpStatusCode::NotFound,
+                        utils::HttpStatusCode::NotFound.code().0,
+                    );
+                }
+            }
+        });
+    }
+
     /// Listens for incoming TCP connections and execute various functionality on those connections.
     ///
-    /// This function starts the web server, accepting incoming connections and distributing
+    /// This method starts the web server, accepting incoming connections and distributing
     /// them to worker threads for handling. It uses the `request_pool` to manage a pool of
     /// worker threads and assigns incoming requests to these workers. The function will
     /// continue to listen for connections indefinitely.
