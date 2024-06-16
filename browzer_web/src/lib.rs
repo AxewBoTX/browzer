@@ -314,7 +314,11 @@ impl WebServer {
     {
         match Arc::get_mut(&mut self.router) {
             Some(router) => {
-                match router.add(path.to_string(), utils::HttpMethod::GET, Box::new(handler)) {
+                match router.add(
+                    path.to_string(),
+                    utils::HttpMethod::PATCH,
+                    Box::new(handler),
+                ) {
                     Ok(_) => {}
                     Err(e) => {
                         eprintln!("{}", e.to_string());
@@ -367,7 +371,11 @@ impl WebServer {
     {
         match Arc::get_mut(&mut self.router) {
             Some(router) => {
-                match router.add(path.to_string(), utils::HttpMethod::GET, Box::new(handler)) {
+                match router.add(
+                    path.to_string(),
+                    utils::HttpMethod::DELETE,
+                    Box::new(handler),
+                ) {
                     Ok(_) => {}
                     Err(e) => {
                         eprintln!("{}", e.to_string());

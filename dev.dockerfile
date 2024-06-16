@@ -9,7 +9,7 @@ COPY . .
 # basic container setup (according to my liking)
 RUN apt-get update && \
 	apt-get install -y curl && \
-	apt-get install -y tmux && \
+	apt-get install -y tmux psmisc && \
 	bash -c "echo 'PATH="/usr/local/cargo/bin:$PATH"' >> ~/.bashrc" && \
 	bash -c "source ~/.bashrc"
 

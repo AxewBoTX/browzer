@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+serde_urlencoded = "0.7"
 thiserror = "1.0"
 maplit = "1.0"
 uuid = { version = "1.8.0", features = ["v4"] }

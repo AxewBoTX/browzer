@@ -6,6 +6,12 @@ use crate::utils::base::*;
 
 fn main() {
     let mut server = browzer_web::WebServer::new(format!("0.0.0.0:{}", PORT), 5);
+
+    // server.middleware(|c| {
+    //     println!("{:#?}", c.request);
+    //     return c;
+    // });
+
     server.get("/", |mut c| {
         return c.send_string(
             browzer_web::utils::HttpStatusCode::OK,
@@ -20,7 +26,7 @@ fn main() {
                 function submitForm(event) {
                     event.preventDefault();
                     const formData = new FormData(event.target);
-                    fetch('/post', {
+                    fetch('/', {
                         method: 'POST',
                         body: new URLSearchParams(formData)
                     })
@@ -46,9 +52,24 @@ fn main() {
     "#,
         );
     });
-    server.post("/post", |mut c| {
-        println!("Request: {:#?}", c.request);
-        return c.send_string(browzer_web::utils::HttpStatusCode::OK, "(/) route");
+    server.post("/", |mut c| {
+        println!("Username: {}", c.form_value("username"));
+        return c.send_string(
+            browzer_web::utils::HttpStatusCode::OK,
+            "Successful Post Request",
+        );
+    });
+    server.patch("/", |mut c| {
+        return c.send_string(
+            browzer_web::utils::HttpStatusCode::OK,
+            "Successful Patch Request",
+        );
+    });
+    server.delete("/", |mut c| {
+        return c.send_string(
+            browzer_web::utils::HttpStatusCode::OK,
+            "Successful Delete Request",
+        );
     });
     server.listen();
 }

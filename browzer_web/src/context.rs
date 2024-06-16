@@ -1,5 +1,8 @@
 //! This module defines the `Context` struct, which represents the context of a web request.
 
+// external crate imports
+use serde_urlencoded;
+
 // internal crate imports
 use crate::{request, response, utils};
 
@@ -115,5 +118,32 @@ impl Context {
             .insert("Location".to_string(), route.to_string());
         res.status_code = status_code;
         res.clone()
+    }
+
+    /// This method allows the user to read the form data from the request
+    pub fn form_value(&mut self, key: &str) -> String {
+        match self.request.headers.get("Content-Type") {
+            Some(content_type) => content_type,
+            None => return String::from(""),
+        };
+        match serde_urlencoded::from_str::<HashMap<String, String>>(match &self.request.body {
+            Some(body) => match std::str::from_utf8(body.trim().as_bytes()) {
+                Ok(body_str) => body_str.trim(),
+                Err(_) => return String::from(""),
+            },
+            None => return String::from(""),
+        }) {
+            Ok(data) => {
+                match data.get(key) {
+                    Some(value) => {
+                        return value.to_string();
+                    }
+                    None => {
+                        return String::from("");
+                    }
+                };
+            }
+            Err(_) => return String::from(""),
+        };
     }
 }
