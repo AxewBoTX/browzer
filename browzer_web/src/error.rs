@@ -4,7 +4,11 @@
 use thiserror::Error;
 
 // Standard library imports
-use std::sync::{self, mpsc};
+use std::{
+    io,
+    num::ParseIntError,
+    sync::{self, mpsc},
+};
 
 /// Custom error type for the `ThreadPool`.
 #[derive(Debug, Error)]
@@ -59,6 +63,13 @@ pub enum WebServerError {
     /// Internal server error.
     #[error("Internal server error: {0}")]
     InternalServerError(String),
+}
+
+/// Implement conversion from `ParseIntError` to `WebServerError::IO`.
+impl From<ParseIntError> for WebServerError {
+    fn from(err: ParseIntError) -> Self {
+        WebServerError::IO(io::Error::new(io::ErrorKind::InvalidData, err.to_string()))
+    }
 }
 
 /// Custom error type for the `WebRouter`

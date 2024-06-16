@@ -35,7 +35,7 @@ pub mod utils;
 // standard library imports
 use std::{
     fs,
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
     net::{TcpListener, TcpStream},
     path::Path,
     sync::Arc,
@@ -508,21 +508,50 @@ impl WebServer {
         router: Arc<router::WebRouter>,
         mut stream: TcpStream,
     ) -> Result<(), error::WebServerError> {
-        let buf_reader = BufReader::new(&mut stream);
+        let mut buf_reader = BufReader::new(&mut stream);
 
         // parse the request string into a `Request` struct by first parsing the string to a string
-        // vector containling the lines of requests as elements and then passing that vector onto the
-        // `new` function of the `Request` string as input
-        let request = match request::Request::new(&match buf_reader
-            .lines()
-            .take_while(|result| match result {
-                Ok(line) => !line.is_empty(),
-                Err(_) => false,
-            })
-            .collect()
-        {
-            Ok(request) => request,
-            Err(e) => return Err(error::WebServerError::IO(e)),
+        // vector containling the lines of requests as elements by following cases:-
+        //
+        // - if the headers contain the `Content-Length` header and it's value is more than 0, then
+        //   we properly parse the body too
+        // - if the headers do not contain the `Content-Length` then we stop after parsing
+        //
+        // and then passing that vector onto the `new` function of the `Request` string as input
+        let request = match request::Request::new(&{
+            let mut request_vector = Vec::new();
+            let mut content_length = 0;
+
+            for line in buf_reader.by_ref().lines() {
+                let line = match line {
+                    Ok(ln) => ln,
+                    Err(e) => return Err(error::WebServerError::IO(e)),
+                };
+                match line.strip_prefix("Content-Length: ") {
+                    Some(c_l) => {
+                        content_length = match c_l.trim().parse() {
+                            Ok(safe_c_l) => safe_c_l,
+                            Err(e) => return Err(error::WebServerError::from(e)),
+                        }
+                    }
+                    None => {}
+                }
+                if line.is_empty() {
+                    request_vector.push(line);
+                    break;
+                }
+                request_vector.push(line);
+            }
+            let mut body = Vec::new();
+            if content_length > 0 {
+                body.resize(content_length, 0);
+                match buf_reader.take(content_length as u64).read_exact(&mut body) {
+                    Ok(_) => {}
+                    Err(e) => return Err(error::WebServerError::IO(e)),
+                }
+                request_vector.push(String::from_utf8_lossy(&body).to_string());
+            }
+            request_vector // return the request_vector to Request::new() function
         }) {
             Ok(safe) => safe,
             Err(e) => {
