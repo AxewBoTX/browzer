@@ -2,6 +2,8 @@
 
 pub mod thread_pool;
 
+use std::time;
+
 // internal crate imports
 use crate::error;
 
@@ -137,5 +139,71 @@ impl HttpStatusCode {
             HttpStatusCode::BadGateway => ("Bad Gateway", 502),
             HttpStatusCode::ServiceUnavailable => ("Service Unavailable", 503),
         }
+    }
+}
+
+/// This struct represents an HTTP cookie as sent in the `Set-Cookie` header of an HTTP response or the
+/// `Cookie` header of an HTTP request.
+///
+/// # Examples
+///
+/// ```rust
+/// let cookie = Cookie::new("auth-token","itisanauthtoken");
+/// assert_eq!(cookie.name, "auth-token".to_string());
+/// assert_eq!(cookie.value, "itisanauthtoken".to_string());
+/// assert_eq!(cookie.http_only, false); // default value
+/// assert_eq!(cookie.path, "/".to_string()); // default value
+/// ```
+#[derive(Debug, Clone)]
+pub struct Cookie {
+    pub name: String,
+    pub value: String,
+    pub path: Option<String>,
+    pub domain: Option<String>,
+    pub expires: Option<time::SystemTime>,
+    pub raw_expires: Option<String>,
+    pub max_age: Option<i64>,
+    pub secure: bool,
+    pub http_only: bool,
+    pub raw: Option<String>,
+}
+impl Cookie {
+    /// Creates a new `Cookie` instance with given name-value input
+    ///
+    /// # Arguments
+    ///
+    /// - `name` - A string literal representing the name of the cookie
+    /// - `value`- A string literal representing the value of the cookie
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let cookie = Cookie::new("session", "abc123");
+    /// assert_eq!(cookie.name, "session".to_string());
+    /// assert_eq!(cookie.value, "abc123".to_string());
+    /// assert_eq!(cookie.http_only, false); // default value
+    /// ```
+    pub fn new(name: &str, value: &str) -> Self {
+        return Cookie {
+            name: name.to_string(),
+            value: value.to_string(),
+            ..Default::default()
+        };
+    }
+}
+impl Default for Cookie {
+    fn default() -> Self {
+        return Cookie {
+            name: "".to_string(),
+            value: "".to_string(),
+            path: None,
+            domain: None,
+            expires: None,
+            raw_expires: None,
+            max_age: None,
+            secure: false,
+            http_only: false,
+            raw: None,
+        };
     }
 }

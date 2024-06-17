@@ -55,12 +55,12 @@ impl Context {
     /// let context = Context::new(request);
     /// ```
     pub fn new(request: request::Request) -> Context {
-        Context {
+        return Context {
             request,
             response: response::Response::default(),
             params: HashMap::new(),
             query_params: HashMap::new(),
-        }
+        };
     }
 
     /// Constructs a response with the given status code and body content.
@@ -106,7 +106,7 @@ impl Context {
     ///
     /// ```rust
     /// let mut context = Context::new(Request::new());
-    /// let response = context.redirect(HttpStatusCode::FOUND, "/home");
+    /// let response = context.redirect(HttpStatusCode::SeeOther, "/home");
     /// ```
     pub fn redirect(
         &mut self,
@@ -121,6 +121,19 @@ impl Context {
     }
 
     /// This method allows the user to read the form data from the request
+    ///
+    /// # Arguments
+    /// - `key` - A `String` representing the key of the form value that you want to read
+    ///
+    /// # Returns
+    /// - A `String` containing the form value of the key provided
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut context = Context::new(Request::new());
+    /// let form_value = context.form_value("form_value_key");
+    /// ```
     pub fn form_value(&mut self, key: &str) -> String {
         match self.request.headers.get("Content-Type") {
             Some(content_type) => content_type,

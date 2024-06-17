@@ -2,7 +2,7 @@
 //! It includes functionality to create, manipulate, and convert responses to strings for sending over the network
 
 // external crate imports
-use maplit::hashmap;
+use chrono;
 
 // internal crate imports
 use crate::utils;
@@ -19,6 +19,7 @@ use std::collections::HashMap;
 /// - `status_code` - An `HttpStatusCode` representing the status of the response.
 /// - `headers` - A `HashMap` containing key-value pairs of header names and values.
 /// - `body` - A `String` containing the body of the response.
+/// - `cookies` - A `HashMap` containing cookies from the request
 ///
 /// # Examples
 ///
@@ -45,6 +46,7 @@ pub struct Response {
     pub status_code: utils::HttpStatusCode,
     pub headers: HashMap<String, String>,
     pub body: String,
+    pub cookies: HashMap<String, utils::Cookie>,
 }
 
 // default implementation for Response struct
@@ -52,8 +54,9 @@ impl Default for Response {
     fn default() -> Self {
         return Response {
             status_code: utils::HttpStatusCode::OK,
-            headers: hashmap! {},
+            headers: HashMap::new(),
             body: String::from(""),
+            cookies: HashMap::new(),
         };
     }
 }
@@ -87,8 +90,9 @@ impl Response {
     pub fn new(status_code: utils::HttpStatusCode, body: String) -> Response {
         return Response {
             status_code,
-            headers: hashmap! {},
+            headers: HashMap::new(),
             body,
+            cookies: HashMap::new(),
         };
     }
 
@@ -96,8 +100,9 @@ impl Response {
     ///
     /// This function convert the `Response` struct into a string to be sent as bytes by setting the status_code
     /// number, status_code text, and content-length in the `Status Line`, setting headers
-    /// to the response string by looping over `headers` field in the Response struct, and then
-    /// finally adding a blank line followed by the body of the response to the response string
+    /// to the response string by looping over `headers` field in the Response struct and looping
+    /// over the `cookies` field in the Response struct, and then finally adding a blank line
+    /// followed by the body of the response to the response string
     ///
     /// # Returns
     ///
@@ -109,6 +114,19 @@ impl Response {
     /// use browzer_web::response::Response;
     /// use browzer_web::utils::HttpStatusCode;
     /// use maplit::hashmap;
+    ///
+    /// let mut cookies = hashmap! {
+    ///     "session".to_string() => Cookie {
+    ///         name: "session".to_string(),
+    ///         value: "abc123".to_string(),
+    ///         expires: Some(SystemTime::now() + Duration::new(15 * 60, 0)),
+    ///         path: Some("/".to_string()),
+    ///         domain: Some("example.com".to_string()),
+    ///         secure: true,
+    ///         http_only: true,
+    ///         ..Default::default()
+    ///     }
+    /// };
     ///
     /// let response = Response {
     ///     status_code: HttpStatusCode::OK,
@@ -124,6 +142,7 @@ impl Response {
     /// assert!(response_string.contains("Content-Length: 39"));
     /// assert!(response_string.contains("Content-Type: text/html"));
     /// assert!(response_string.contains("<html><body>Hello, World!</body></html>"));
+    /// assert!(response_string.contains("Set-Cookie: session=abc123; Path=/; Domain=example.com; Expires="));
     /// ```
     pub fn to_string(&self) -> String {
         let status_code = &self.status_code.code();
@@ -136,6 +155,40 @@ impl Response {
         for (key, value) in &self.headers {
             response.push_str(&format! {"{}: {}\r\n",key,value});
         }
+
+        // parse cookies hashmap and append it to the response string
+        for cookie in self.cookies.values() {
+            let mut cookie_string = format!("{}={}", cookie.name, cookie.value);
+
+            if let Some(ref path) = cookie.path {
+                cookie_string.push_str(&format!("; Path={}", path));
+            }
+
+            if let Some(ref domain) = cookie.domain {
+                cookie_string.push_str(&format!("; Domain={}", domain));
+            }
+
+            if let Some(expires) = cookie.expires {
+                let datetime = chrono::DateTime::<chrono::Utc>::from(expires);
+                let formatted_time = datetime.format("%a, %d %b %Y %H:%M:%S GMT").to_string();
+                cookie_string.push_str(&format!("; Expires={}", formatted_time));
+            }
+
+            if let Some(max_age) = cookie.max_age {
+                cookie_string.push_str(&format!("; Max-Age={}", max_age));
+            }
+
+            if cookie.secure {
+                cookie_string.push_str("; Secure");
+            }
+
+            if cookie.http_only {
+                cookie_string.push_str("; HttpOnly");
+            }
+
+            response.push_str(&format!("Set-Cookie: {}\r\n", cookie_string));
+        }
+
         response.push_str("\r\n");
         response.push_str(&self.body);
         return response;

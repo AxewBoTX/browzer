@@ -1,8 +1,5 @@
 //! This module defines the `Request` struct and functionality related to handling HTTP requests.
 
-// external crate imports
-use maplit::hashmap;
-
 // internal crate imports
 use crate::{error, utils};
 
@@ -21,6 +18,7 @@ use std::collections::HashMap;
 /// - `version` - The HTTP version used in the request (e.g., "HTTP/1.1").
 /// - `headers` - A `HashMap` containing the request headers as key-value pairs.
 /// - `body` - An optional string containing the body of the request.
+/// - `cookies` - A `HashMap` containing cookies from the request
 // ----- Request struct
 #[derive(Debug)]
 pub struct Request {
@@ -29,6 +27,7 @@ pub struct Request {
     pub version: String,
     pub headers: HashMap<String, String>,
     pub body: Option<String>,
+    pub cookies: HashMap<String, utils::Cookie>,
 }
 // default implementation for Request struct
 impl Default for Request {
@@ -37,8 +36,9 @@ impl Default for Request {
             method: utils::HttpMethod::GET,
             path: String::from("/"),
             version: String::from("HTTP/1.1"),
-            headers: hashmap! {},
+            headers: HashMap::new(),
             body: None,
+            cookies: HashMap::new(),
         }
     }
 }
@@ -66,7 +66,7 @@ impl Request {
         let method;
         let path;
         let version;
-        let mut headers = hashmap! {};
+        let mut headers = HashMap::new();
 
         // parse request method, path, and version from the first line of input string vector by
         // looping over the parts of the line
@@ -121,6 +121,17 @@ impl Request {
             None
         };
 
+        // parse cookies from `Cookie` header into the `cookies` field of the request
+        let mut cookies = HashMap::new();
+        if let Some(cookie_string) = headers.get("Cookie") {
+            cookie_string.split(";").for_each(|string_cookie| {
+                let mut cookie_parts = string_cookie.splitn(2, '=');
+                if let (Some(name), Some(value)) = (cookie_parts.next(), cookie_parts.next()) {
+                    cookies.insert(name.trim().to_string(), utils::Cookie::new(name, value));
+                }
+            });
+        };
+
         // return the Request struct
         return Ok(Request {
             method,
@@ -128,6 +139,7 @@ impl Request {
             version,
             headers,
             body,
+            cookies,
         });
     }
 }

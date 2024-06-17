@@ -2,15 +2,8 @@ mod utils;
 
 use browzer_web;
 
-use crate::utils::base::*;
-
 fn main() {
-    let mut server = browzer_web::WebServer::new(format!("0.0.0.0:{}", PORT), 5);
-
-    // server.middleware(|c| {
-    //     println!("{:#?}", c.request);
-    //     return c;
-    // });
+    let mut server = browzer_web::WebServer::new(format!("0.0.0.0:{}", utils::base::PORT), 5);
 
     server.get("/", |mut c| {
         return c.send_string(

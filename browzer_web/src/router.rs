@@ -1,7 +1,5 @@
 //! This module provides the routing functionality for the web framework. It defines the `WebRouter` struct, allowing user to handle routing in a web application.
 
-// external crate imports
-use maplit::hashmap;
 // internal crate imports
 use crate::{context, error, request, response, utils};
 // standard library imports
@@ -55,7 +53,7 @@ impl WebRouter {
     /// ```
     pub fn new() -> WebRouter {
         return WebRouter {
-            routes: hashmap! {},
+            routes: HashMap::new(),
             middlewares: vec![],
         };
     }
@@ -250,7 +248,7 @@ impl WebRouter {
         request_path: String,
         route_path: String,
     ) -> Option<HashMap<String, String>> {
-        let mut params: HashMap<String, String> = hashmap! {};
+        let mut params: HashMap<String, String> = HashMap::new();
 
         let request_path_parts: Vec<&str> = request_path.split('?').collect::<Vec<_>>()[0]
             .split('/')
